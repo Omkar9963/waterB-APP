@@ -842,7 +842,7 @@ function renderStorage(d){clearLakeMarkers();
     $('storageResult').innerHTML='<div class="stoline">No Sentinel-1 passes or no waterbodies found in this area/period.</div>';return;}
   $('storageChartWrap').style.display='block';
   destroyChart(storageChart);
-  let labels,datasets,note=d.note||'',perLake=false;
+  let labels,datasets,perLake=false;
   if(hasLakes){perLake=true;
     const lakes=d.lakes.slice(0,8);
     labels=(lakes[0].series||[]).map(p=>p.date);
@@ -867,7 +867,7 @@ function renderStorage(d){clearLakeMarkers();
       scales:{x:{ticks:{maxTicksLimit:6,font:{family:'Space Mono',size:9},color:'#5B7383',maxRotation:0},grid:{display:false},border:{color:'#DCE6EB'}},
         y:{beginAtZero:true,title:{display:true,text:'MCM',font:{family:'Space Mono',size:10},color:'#5B7383'},ticks:{font:{family:'Space Mono',size:9},color:'#5B7383'},grid:{color:'#EDF2F4'},border:{display:false}}}}});
   const head=perLake?(d.lakes.length+' waterbody(ies) · dots on the map are colour-matched'):(d.n_passes+' SAR pass(es)');
-  $('storageResult').innerHTML='<div class="stoline" style="margin-top:8px">'+head+(note?' · '+note:'')+'</div>';
+  $('storageResult').innerHTML='<div class="stoline" style="margin-top:8px">'+head+'</div>';
 }
 $('budgettab').addEventListener('click',toggleBudget);
 initMap();loadStates();
