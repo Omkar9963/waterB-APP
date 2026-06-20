@@ -3,11 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rainfall–Runoff DSS</title>
+<title>Water Budgeting DSS</title>
 <link rel="icon" href="logo.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"/>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
@@ -30,10 +32,13 @@
   .rail{width:430px;min-width:430px;height:100vh;overflow-y:auto;background:var(--surface);
         border-right:1px solid var(--line);scrollbar-width:thin}
   .rail::-webkit-scrollbar{width:8px}.rail::-webkit-scrollbar-thumb{background:#CDDAE0;border-radius:8px}
-  .railhead{background:var(--grad);color:#fff;padding:28px 26px;display:flex;align-items:center;gap:15px}
+  .railhead{background:var(--grad);background-size:200% 200%;animation:grad 10s ease infinite;color:#fff;padding:30px 26px;display:flex;align-items:center;gap:16px;position:relative;overflow:hidden}
+  .railhead::after{content:'';position:absolute;right:-30px;top:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.12)}
+  @keyframes grad{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
   
-  .railhead svg{width:52px;height:52px;flex:none;filter:drop-shadow(0 6px 14px rgba(0,0,0,.3))}
-  .railhead .wm{font-family:var(--disp);font-weight:700;font-size:24px;line-height:1.06;letter-spacing:-.01em}
+  
+  .railhead svg{width:66px;height:66px;flex:none;filter:drop-shadow(0 6px 14px rgba(0,0,0,.3))}
+  .railhead .wm{font-family:var(--disp);font-weight:700;font-size:25px;line-height:1.06;letter-spacing:-.01em;position:relative}
   .railhead .wm small{display:block;font-family:var(--mono);font-weight:400;font-size:10.5px;
         letter-spacing:.2em;text-transform:uppercase;opacity:.85;margin-top:5px}
   .inner{padding:26px}
@@ -57,7 +62,7 @@
   .btn{flex:1;border:0;border-radius:11px;padding:13px;font-family:var(--disp);font-weight:600;font-size:14px;
        cursor:pointer;transition:transform .08s,filter .2s,opacity .2s}
   .btn:active{transform:translateY(1px)}
-  .run{background:var(--grad);color:#fff;box-shadow:0 8px 22px -10px var(--teal)}
+  .run{background:var(--grad);background-size:200% 200%;animation:grad 8s ease infinite;color:#fff;box-shadow:0 10px 26px -10px var(--teal),0 0 0 1px rgba(255,255,255,.15) inset}
   .run:hover{filter:brightness(1.07)} .run:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
   .reset{background:var(--paper);color:var(--ink);border:1px solid var(--line)}
   .status{font-size:12px;color:var(--muted);margin-top:14px;min-height:16px;line-height:1.5}
@@ -66,7 +71,8 @@
 
   .readouts{display:grid;grid-template-columns:1fr 1fr;gap:14px}
   .readout{border:1px solid var(--line);border-radius:16px;padding:18px;position:relative;overflow:hidden}
-  .readout.rain{background:linear-gradient(140deg,#EAF2FF,#fff 75%)} .readout.run{background:linear-gradient(140deg,#FFF1E8,#fff 75%)}
+  .readout.rain{background:linear-gradient(140deg,#E3EEFF,#fff 78%)} .readout.run{background:linear-gradient(140deg,#FFEBDD,#fff 78%)}
+  .readout{box-shadow:0 10px 24px -18px rgba(12,37,54,.4)}
   .readout::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px}
   .readout.rain::before{background:var(--rain)} .readout.run::before{background:var(--runoff)}
   .readout.rain .rv{color:var(--rain)} .readout.run .rv{color:var(--runoff)}
@@ -88,11 +94,12 @@
   .legend{margin-top:16px}
   .lrow{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:11px;margin:4px 0}
   .sw{width:24px;height:13px;border-radius:3px;border:1px solid rgba(0,0,0,.1)}
-  .chartwrap{margin-top:16px;border:1px solid var(--line);border-radius:14px;padding:14px;height:270px;position:relative;background:var(--surface)}
+  .chartwrap{margin-top:16px;border:1px solid var(--line);border-radius:16px;padding:14px;height:270px;position:relative;background:linear-gradient(160deg,#FBFDFE,#fff);box-shadow:0 10px 24px -20px rgba(12,37,54,.4)}
   .chartload{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:8px;
              font-family:var(--mono);font-size:11.5px;color:var(--muted)}
   .dot{width:7px;height:7px;border-radius:50%;background:var(--teal);animation:pulse 1s infinite}
   @keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+  .dl.csv{background:var(--teal)}
   .dl{width:100%;margin-top:16px;background:var(--deep);color:#fff;border:0;border-radius:11px;padding:13px;
       font-family:var(--disp);font-weight:600;font-size:13.5px;cursor:pointer;transition:filter .2s}
   .dl:hover{filter:brightness(1.12)} .dl:disabled{opacity:.6;cursor:wait}
@@ -144,14 +151,110 @@
            cursor:pointer;box-shadow:0 8px 22px -12px rgba(12,37,54,.5);font-size:16px;color:var(--deep)}
   .northarrow{position:absolute;bottom:78px;right:22px;z-index:1000;width:40px;height:40px;opacity:.92;
               filter:drop-shadow(0 4px 8px rgba(0,0,0,.3))}
-  .logobadge{position:absolute;z-index:1001;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);
-        border:1px solid rgba(255,255,255,.6);box-shadow:0 8px 22px -12px rgba(12,37,54,.5);
-        border-radius:12px;padding:7px;height:58px;display:flex;align-items:center}
+  .logobadge{position:absolute;z-index:1001;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);
+        border:1px solid rgba(255,255,255,.7);box-shadow:0 10px 26px -12px rgba(12,37,54,.55);
+        border-radius:14px;padding:9px;height:74px;display:flex;align-items:center}
   .logobadge img{height:100%;width:auto;object-fit:contain}
   .logo-tl{top:20px;left:20px}
   .logo-tr{top:20px;right:20px}
+  .zones{margin-top:16px;display:none}
+  .zones .zt{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  .zone{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:11px;margin:5px 0}
+  .zone .zl{width:140px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .zone .ztrack{flex:1;height:9px;border-radius:5px;background:#EDF2F4;overflow:hidden}
+  .zone .zbar{height:100%;border-radius:5px;background:linear-gradient(90deg,#FDBA74,#EA580C)}
+  .zone .zv{width:54px;text-align:right;color:var(--runoff);font-weight:700}
+  .chat{height:240px;overflow-y:auto;border:1px solid var(--line);border-radius:16px;padding:13px;
+        background:linear-gradient(160deg,#F4FAFB,#fff);display:flex;flex-direction:column;gap:10px}
+  .msg{max-width:88%;padding:10px 13px;border-radius:15px;font-size:13px;line-height:1.55;white-space:pre-wrap}
+  .msg.u{align-self:flex-end;background:var(--grad);color:#fff;border-bottom-right-radius:5px}
+  .msg.a{align-self:flex-start;background:#fff;border:1px solid var(--line);border-bottom-left-radius:5px}
+  .msg.t{align-self:flex-start;color:var(--muted);font-family:var(--mono);font-size:11px}
+  .chatin{display:flex;gap:9px;margin-top:11px}
+  .chatin input{flex:1;padding:12px 13px;border:1px solid var(--line);border-radius:12px;font-family:var(--body);font-size:13px}
+  .chatin input:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(34,184,196,.18)}
+  .chatin button{width:48px;border:0;border-radius:12px;background:var(--grad);color:#fff;font-size:17px;cursor:pointer}
+  .dl.measures{background:var(--teal)}
   img.tilefade{transition:opacity .55s ease}
   .leaflet-control-zoom{border:0!important;box-shadow:0 8px 22px -12px rgba(12,37,54,.5)!important}
+.modeseg,.customseg{display:flex;gap:6px;background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:4px;margin-bottom:10px}
+  .modeseg button,.customseg button{flex:1;border:0;background:transparent;padding:9px 0;border-radius:8px;font-family:var(--body);font-weight:600;font-size:12px;color:var(--muted);cursor:pointer;transition:.2s}
+  .modeseg button.on,.customseg button.on{background:var(--teal);color:#fff}
+  .opt{font-weight:400;color:#9FB1BB;font-size:10.5px}
+  .hint{font-size:12px;color:var(--muted);line-height:1.55;margin:8px 0 10px}
+  #fileinput{width:100%;font-size:12px;padding:9px;border:1px dashed var(--line);border-radius:10px;background:var(--paper);cursor:pointer}
+  .custstatus{font-family:var(--mono);font-size:11px;margin-top:9px;color:var(--muted);line-height:1.5}
+  .leaflet-draw{margin-top:88px!important}
+  .drow{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:6px;align-items:center;margin:4px 0}
+  .drow label{font-size:11px;color:var(--muted)}
+  .drow input{padding:7px 8px;border:1px solid var(--line);border-radius:8px;font-family:var(--mono);font-size:11px;width:100%}
+  .dgrouplabel{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);font-weight:700;margin:10px 0 4px}
+  .dhead{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:6px;font-size:9.5px;color:#9FB1BB;font-family:var(--mono);text-transform:uppercase;margin-bottom:2px}
+  .bcard{border:1px solid var(--line);border-radius:13px;padding:12px 14px;margin-top:10px}
+  .bcard.sup{border-left:4px solid #2563EB} .bcard.dem{border-left:4px solid #EA580C}
+  .brow{display:flex;justify-content:space-between;font-size:12.5px;margin:4px 0;font-family:var(--mono);color:var(--ink)}
+  .brow .bv{font-weight:700}
+  .btot{border-top:1px solid var(--line);margin-top:6px;padding-top:6px;font-weight:700}
+  .balcard{border-radius:14px;padding:16px;margin-top:12px;text-align:center}
+  .balcard.surplus{background:linear-gradient(140deg,#E8F5E9,#fff);border:1px solid #2E7D32}
+  .balcard.deficit{background:linear-gradient(140deg,#FFEBEE,#fff);border:1px solid #C62828}
+  .balcard .bl{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .balcard .bn{font-family:var(--disp);font-weight:700;font-size:30px;margin-top:6px;letter-spacing:-.02em}
+  .balcard.surplus .bn{color:#2E7D32} .balcard.deficit .bn{color:#C62828}
+  .stoline{font-family:var(--mono);font-size:11px;color:var(--muted);margin:3px 0}
+  .wbcards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .wbcard{border:1px solid var(--line);border-left:4px solid var(--cc,#0E7C86);border-radius:13px;padding:13px 14px;box-shadow:0 10px 24px -18px rgba(12,37,54,.4)}
+  .wbcard:last-child:nth-child(odd){grid-column:1 / -1}
+  .wbcard .wk{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .wbcard .wv{font-family:var(--disp);font-weight:700;font-size:24px;margin-top:6px;color:var(--cc,#0E7C86);letter-spacing:-.02em}
+  .wbcard .wu{font-family:var(--mono);font-size:10px;color:var(--muted);margin-left:3px}
+
+  /* water budget side panel */
+  .budgetpanel{width:430px;min-width:430px;height:100vh;background:var(--surface);
+    border-left:1px solid var(--line);position:relative;
+    transition:width .35s cubic-bezier(.3,.8,.3,1),min-width .35s cubic-bezier(.3,.8,.3,1)}
+  .budgetpanel.closed{width:0;min-width:0;border-left:0}
+  .bpscroll{height:100vh;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin}
+  .bpscroll::-webkit-scrollbar{width:8px}.bpscroll::-webkit-scrollbar-thumb{background:#CDDAE0;border-radius:8px}
+  .budgettab{position:absolute;left:-32px;top:50%;transform:translateY(-50%);z-index:1500;width:32px;padding:18px 0;
+    background:var(--grad);background-size:200% 200%;animation:grad 10s ease infinite;color:#fff;border:0;
+    border-radius:12px 0 0 12px;cursor:pointer;writing-mode:vertical-rl;font-family:var(--disp);font-weight:600;
+    font-size:12px;letter-spacing:.08em;box-shadow:-8px 0 22px -12px rgba(12,37,54,.5)}
+  .bphead{background:var(--grad);background-size:200% 200%;animation:grad 10s ease infinite;color:#fff;padding:24px 24px}
+  .bphead .wm{font-family:var(--disp);font-weight:700;font-size:21px;line-height:1.1}
+  .bphead .wm small{display:block;font-family:var(--mono);font-weight:400;font-size:10px;letter-spacing:.18em;
+    text-transform:uppercase;opacity:.85;margin-top:5px}
+  .bpinner{padding:24px}
+  .bpempty{font-size:13.5px;color:var(--muted);line-height:1.75}
+  .bpsec{margin-top:26px}.bpsec:first-child{margin-top:0}
+  .chartwrap.sm{height:210px}
+  /* floating chatbot */
+  .fab{position:fixed;bottom:22px;right:22px;z-index:4000;width:62px;height:62px;border-radius:50%;
+       background:linear-gradient(135deg,#16A34A,#15803D 40%,#2563EB);background-size:200% 200%;
+       animation:grad 8s ease infinite;border:0;cursor:pointer;
+       box-shadow:0 14px 32px -10px rgba(12,37,54,.55);display:flex;align-items:center;justify-content:center}
+  .fab svg{width:32px;height:32px}
+  .fab:hover{filter:brightness(1.07)}
+  .greet{position:fixed;bottom:96px;right:24px;z-index:4000;background:#fff;border:1px solid var(--line);
+       border-radius:14px 14px 4px 14px;padding:12px 30px 12px 14px;max-width:240px;font-size:12.5px;line-height:1.5;
+       color:var(--ink);box-shadow:0 14px 32px -14px rgba(12,37,54,.5);animation:rise .4s}
+  .greet b{color:var(--teal)}
+  .greet .x{position:absolute;top:7px;right:10px;cursor:pointer;color:var(--muted);font-size:13px}
+  .chatwin{position:fixed;bottom:22px;right:22px;z-index:4001;width:380px;max-width:calc(100vw - 32px);
+       height:540px;max-height:calc(100vh - 44px);background:#fff;border:1px solid var(--line);border-radius:18px;
+       display:none;flex-direction:column;overflow:hidden;box-shadow:0 26px 64px -20px rgba(12,37,54,.6)}
+  .chatwin.open{display:flex;animation:rise .35s}
+  .cwhead{background:var(--grad);background-size:200% 200%;animation:grad 9s ease infinite;color:#fff;
+       padding:14px 16px;display:flex;align-items:center;gap:11px}
+  .cwhead svg{width:28px;height:28px}
+  .cwhead .t{font-family:var(--disp);font-weight:600;font-size:15px;flex:1;line-height:1.1}
+  .cwhead .t small{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.14em;opacity:.85;text-transform:uppercase;margin-top:3px}
+  .cwhead button{background:rgba(255,255,255,.22);border:0;color:#fff;width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:15px;line-height:1}
+  .cwbody{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;background:linear-gradient(160deg,#F4FAFB,#fff)}
+  .cwfoot{display:flex;gap:9px;padding:12px;border-top:1px solid var(--line)}
+  .cwfoot input{flex:1;padding:12px 13px;border:1px solid var(--line);border-radius:12px;font-family:var(--body);font-size:13px}
+  .cwfoot input:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(34,184,196,.18)}
+  .cwfoot button{width:48px;border:0;border-radius:12px;background:var(--grad);color:#fff;font-size:17px;cursor:pointer}
   @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -168,83 +271,122 @@
         <g clip-path="url(#c2)" stroke="#0B4F6C" fill="none" stroke-linecap="round">
           <path d="M18 62C34 54 44 68 60 62 76 56 88 68 104 60" stroke-width="2.4" stroke-opacity=".55"/>
           <path d="M26 66 42 66 52 44 62 70 72 56 96 56" stroke-width="3.2" stroke-opacity=".95"/></g></svg>
-      <div class="wm">Rainfall–Runoff DSS<small>SCS-CN · Hydrology</small></div>
+      <div class="wm">Water Budgeting DSS<small>Supply &amp; Demand</small></div>
     </div>
 
     <div class="inner">
       <div class="block reveal" style="animation-delay:.05s;margin-top:6px">
-        <p class="lede">Pick an area and period, and the model estimates daily surface runoff using the
-          Modified SCS–Curve Number method over satellite and reanalysis data.</p>
+        <p class="lede">Pick an area and a short period, and the model estimates the daily water balance:
+          soil moisture, rainfall, evapotranspiration, runoff and deep percolation, using FAO-56 over satellite data.</p>
       </div>
 
       <div class="block reveal" style="animation-delay:.1s">
         <p class="blabel">Study area</p>
-        <label class="f">State</label>
-        <select id="state" disabled><option>Loading states…</option></select>
-        <label class="f">District</label>
-        <select id="district" disabled><option>Select a state first</option></select>
+        <div class="modeseg" id="modeseg">
+          <button class="on" data-m="admin">Administrative</button>
+          <button data-m="watershed">Watershed</button>
+          <button data-m="custom">Custom</button>
+        </div>
+
+        <div id="pane-admin">
+          <label class="f">State</label>
+          <select id="state" disabled><option>Loading states…</option></select>
+          <label class="f">District <span class="opt">(optional, blank = whole state)</span></label>
+          <select id="district" disabled><option>Select a state first</option></select>
+        </div>
+
+        <div id="pane-watershed" style="display:none">
+          <label class="f">Basin</label>
+          <select id="basin" disabled><option>Loading basins…</option></select>
+          <label class="f">Sub-Basin <span class="opt">(optional)</span></label>
+          <select id="subbasin" disabled><option>Select a basin first</option></select>
+          <label class="f">Watershed <span class="opt">(optional)</span></label>
+          <select id="watershed" disabled><option>Select a sub-basin first</option></select>
+        </div>
+
+        <div id="pane-custom" style="display:none">
+          <div class="customseg" id="customseg">
+            <button class="on" data-c="draw">Draw polygon</button>
+            <button data-c="upload">Upload file</button>
+          </div>
+          <div id="custom-draw">
+            <p class="hint">Use the polygon/rectangle tool on the map (top-left) to draw your area, then Run.</p>
+            <button class="dl" id="cleardraw" style="background:#6B7280">Clear drawing</button>
+          </div>
+          <div id="custom-upload" style="display:none">
+            <p class="hint">Upload a zipped shapefile (.zip) or a GeoJSON (.geojson / .json).</p>
+            <input type="file" id="fileinput" accept=".zip,.geojson,.json">
+            <div class="custstatus" id="custstatus"></div>
+          </div>
+        </div>
       </div>
 
       <div class="block reveal" style="animation-delay:.16s">
-        <p class="blabel">Period &amp; source</p>
-        <label class="f">Precipitation source</label>
-        <select id="source">
-          <option value="historical">Historical — CHIRPS daily</option>
-          <option value="future">Future — CMIP6 projection</option>
-        </select>
-        <label class="f">Start date</label><input type="date" id="start" value="2022-01-01">
-        <label class="f">End date</label><input type="date" id="end" value="2023-12-31">
-        <div class="future" id="futureBox">
-          <p>SSP1-2.6 low · SSP2-4.5 intermediate · SSP5-8.5 high emissions</p>
-          <label class="f">Climate model</label><select id="model" disabled><option>Loading…</option></select>
-          <label class="f">Emission scenario</label><select id="scenario" disabled><option>Loading…</option></select>
-        </div>
+        <p class="blabel">Period</p>
+        <label class="f">Start date</label><input type="date" id="start" value="2023-07-01">
+        <label class="f">End date</label><input type="date" id="end" value="2023-07-31">
+        <p class="hint">Keep the period short (about a month). The water balance is heavy, so long periods over large areas can time out.</p>
         <div class="actions">
           <button class="btn run" id="run">Run analysis</button>
           <button class="btn reset" id="reset">Reset</button>
         </div>
-        <div class="status" id="status">Choose a state and district to begin.</div>
+        <div class="status" id="status">Define a study area, then Run.</div>
         <div class="err" id="err"></div>
       </div>
 
       <div class="block reveal" id="resultBlock" style="display:none">
-        <p class="blabel">Areal totals</p>
-        <div class="readouts">
-          <div class="readout rain"><div class="rk">Rainfall</div><div class="rv"><span id="vRain">0</span><span class="ru">mm</span></div></div>
-          <div class="readout run"><div class="rk">Runoff</div><div class="rv"><span id="vRun">0</span><span class="ru">mm</span></div></div>
-        </div>
+        <p class="blabel">Daily mean (mm/day)</p>
+        <div class="wbcards" id="wbcards"></div>
         <div class="daysnote" id="daysnote"></div>
       </div>
 
       <div class="block reveal" id="layerBlock" style="display:none">
         <p class="blabel">Map layer</p>
-        <div class="seg" id="seg"><div class="ind" id="segInd"></div>
-          <button data-l="rainfall">Rainfall</button>
-          <button class="on" data-l="runoff">Runoff</button>
-          <button data-l="dem">Elevation</button></div>
+        <div class="modeseg" id="layerseg">
+          <button class="on" data-l="soil_moisture">Soil</button>
+          <button data-l="precipitation">Rain</button>
+          <button data-l="evapotranspiration">ET</button>
+          <button data-l="runoff">Runoff</button>
+          <button data-l="deep_percolation">Deep</button>
+        </div>
         <div class="opac">Opacity <input type="range" id="opacity" min="0" max="100" value="88"></div>
         <div class="legend" id="legend"></div>
-        <button class="dl" id="download">Download runoff raster — GeoTIFF</button>
+        <label class="f">Export component</label>
+        <select id="dlcomp">
+          <option value="soil_moisture">Soil moisture</option>
+          <option value="precipitation">Precipitation</option>
+          <option value="evapotranspiration">Evapotranspiration</option>
+          <option value="runoff">Runoff</option>
+          <option value="deep_percolation">Deep percolation</option>
+        </select>
+        <button class="dl" id="download">Download component GeoTIFF</button>
       </div>
 
       <div class="block reveal" id="chartBlock" style="display:none">
         <p class="blabel">Daily series</p>
         <div class="chartwrap"><div class="chartload" id="chartload"><span class="dot"></span>Computing daily series…</div>
           <canvas id="chart"></canvas></div>
+        <button class="dl csv" id="csv">Download daily data CSV</button>
+      </div>
+
+      <div class="block reveal" id="aiBlock" style="display:none">
+        <p class="blabel">Assistant</p>
+        <p class="lede" style="font-size:13px">Open the chat at the bottom-right to ask about this area: soil moisture, ET vs rainfall, runoff, recharge and what measures would help.</p>
+        <button class="dl measures" id="measures">Suggest water-management measures</button>
       </div>
 
       <div class="acc reveal" style="animation-delay:.22s">
         <details><summary>How the model works <span class="plus">+</span></summary>
-          <div class="ac">Runoff is computed daily with the <b>Modified SCS Curve Number</b> method. Curve numbers come from
-            <b>MODIS land cover</b> and <b>OpenLandMap soil texture</b> (grouped into hydrologic soil groups), then
-            adjusted for slope from the <b>SRTM</b> DEM. A five-day antecedent-rainfall window shifts each cell between
-            dry, normal and wet states (AMC I / II / III) before solving the runoff depth.</div></details>
+          <div class="ac">A daily soil-water bucket is solved per pixel. Reference ET comes from <b>ERA5-Land</b> with
+            <b>FAO-56</b>, scaled to crop ET using <b>NDVI</b> (Sentinel-2, gap-filled with MODIS). Rainfall is <b>CHIRPS</b>;
+            runoff uses the slope-adjusted <b>SCS Curve Number</b>. Each day soil moisture = previous + infiltration minus ET,
+            held between wilting point and field capacity, with the excess becoming deep percolation.</div></details>
         <details><summary>Data sources <span class="plus">+</span></summary>
-          <div class="src"><span>CHIRPS</span> — daily precipitation<br><span>NEX-GDDP-CMIP6</span> — climate projections<br>
-            <span>MODIS MCD12Q1</span> — land cover<br><span>OpenLandMap</span> — soil texture<br><span>SRTM</span> — elevation &amp; slope</div></details>
+          <div class="src"><span>ERA5-Land</span>: weather for ET<br><span>CHIRPS</span>: daily rainfall<br>
+            <span>Sentinel-2 / MODIS</span>: NDVI<br><span>SoilGrids / OpenLandMap</span>: soil &amp; water-holding<br><span>SRTM</span>: elevation &amp; slope</div></details>
         <details><summary>Reading the output <span class="plus">+</span></summary>
-          <div class="ac">The map shows cumulative depth over the period; readouts are the district-wide spatial average.
-            The daily series keeps every day. Export the runoff grid as a georeferenced GeoTIFF for GIS.</div></details>
+          <div class="ac">Layers show the period-mean of each component; readouts are the area-wide daily mean.
+            For big areas the sampling is coarse, so basin/state values are indicative. Export any component as a GeoTIFF.</div></details>
       </div>
       <div class="credit">Developed by Omkar<br>
         Dr. S. Selvakumar, TNAU<br>
@@ -269,17 +411,111 @@
       <path d="M20 6 L25 22 L20 18 L15 22 Z" fill="#0B4F6C"/><text x="20" y="34" text-anchor="middle"
       font-family="Space Mono" font-size="9" fill="#0B4F6C">N</text></svg>
     <div class="plate titleplate" id="titleplate"><div class="pk">Active area</div>
-      <div class="pv" id="tpArea">—</div><div class="pp" id="tpPeriod"></div></div>
+      <div class="pv" id="tpArea">-</div><div class="pp" id="tpPeriod"></div></div>
     <div class="plate maplegend" id="maplegend"><h4 id="mlTitle">Runoff</h4><div id="mlbody"></div></div>
+  </div>
+
+  <aside class="budgetpanel closed" id="budgetpanel">
+    <button class="budgettab" id="budgettab">Water budget ‹</button>
+    <div class="bpscroll">
+    <div class="bphead"><div class="wm">Water Budget<small>Supply &amp; Demand</small></div></div>
+    <div class="bpinner">
+      <div class="bpempty" id="bpempty">Run an analysis on the left, then calculate the supply-versus-demand budget, daily agricultural demand and reservoir storage for that area here.</div>
+
+      <div id="bpcontent" style="display:none">
+        <div class="bpsec">
+          <p class="blabel">Demand configuration</p>
+          <p class="hint">Edit the values for your area, then calculate. Supply is runoff + recharge; demand is crop water deficit + domestic + livestock + industrial.</p>
+
+          <div class="dgrouplabel">Domestic (people, litres/person/day)</div>
+          <div class="dhead"><span>Group</span><span>Count</span><span>LPCD</span></div>
+          <div class="drow"><label>Urban</label><input id="dom_urban_c" value="1000000"><input id="dom_urban_r" value="135"></div>
+          <div class="drow"><label>Rural</label><input id="dom_rural_c" value="1000000"><input id="dom_rural_r" value="55"></div>
+
+          <div class="dgrouplabel">Livestock (count, litres/day)</div>
+          <div class="dhead"><span>Type</span><span>Count</span><span>LPD</span></div>
+          <div class="drow"><label>Cattle</label><input id="liv_cattle_c" value="100000"><input id="liv_cattle_r" value="40"></div>
+          <div class="drow"><label>Buffalo</label><input id="liv_buffalo_c" value="50000"><input id="liv_buffalo_r" value="40"></div>
+          <div class="drow"><label>Sheep/Goat</label><input id="liv_sg_c" value="100000"><input id="liv_sg_r" value="5"></div>
+          <div class="drow"><label>Poultry</label><input id="liv_poultry_c" value="1000000"><input id="liv_poultry_r" value="0.25"></div>
+
+          <div class="dgrouplabel">Industrial (count, m3/day)</div>
+          <div class="dhead"><span>Type</span><span>Count</span><span>m3/day</span></div>
+          <div class="drow"><label>Small/Med</label><input id="ind_small_c" value="1000"><input id="ind_small_r" value="2.5"></div>
+          <div class="drow"><label>Large</label><input id="ind_large_c" value="10"><input id="ind_large_r" value="2500"></div>
+
+          <button class="dl" id="calcbudget" style="background:var(--teal)">Calculate water budget</button>
+        </div>
+
+        <div class="bpsec" id="budgetCharts" style="display:none">
+          <p class="blabel">Supply vs demand</p>
+          <div id="balcardWrap"></div>
+          <div class="chartwrap sm"><canvas id="budgetDonut"></canvas></div>
+          <p class="blabel" style="margin-top:20px">Demand breakdown</p>
+          <div class="chartwrap sm"><canvas id="demandBar"></canvas></div>
+          <div id="agWrap" style="display:none">
+            <p class="blabel" style="margin-top:20px">Daily agricultural demand</p>
+            <div class="chartwrap sm"><canvas id="agChart"></canvas></div>
+          </div>
+          <div id="budgetResult" style="margin-top:14px"></div>
+        </div>
+
+        <div class="bpsec">
+          <p class="blabel">Reservoir storage</p>
+          <p class="hint">Sentinel-1 SAR estimate over waterbodies in the area. Heavy: best for small areas and short periods. Each waterbody is coloured to match its dot on the map.</p>
+          <button class="dl" id="eststorage" style="background:var(--deep)">Estimate reservoir storage</button>
+          <div class="chartwrap sm" id="storageChartWrap" style="display:none;margin-top:14px"><canvas id="storageChart"></canvas></div>
+          <div id="storageResult"></div>
+        </div>
+      </div>
+    </div>
+    </div>
+  </aside>
+</div>
+
+<button class="fab" id="fab" title="Open assistant">
+  <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><defs>
+    <clipPath id="cf"><path d="M60 8C60 8 96 50 96 78A36 36 0 1 1 24 78C24 50 60 8 60 8Z"/></clipPath></defs>
+    <path d="M60 8C60 8 96 50 96 78A36 36 0 1 1 24 78C24 50 60 8 60 8Z" fill="#fff"/>
+    <g clip-path="url(#cf)" stroke="#0E7C86" fill="none" stroke-linecap="round">
+      <path d="M18 64C34 56 44 70 60 64 76 58 88 70 104 62" stroke-width="3" stroke-opacity=".5"/>
+      <path d="M26 66 42 66 52 44 62 70 72 56 96 56" stroke-width="3.6"/></g></svg>
+</button>
+<div class="greet" id="greet" style="display:none"><span class="x" id="greetx">✕</span>Hi! I'm your <b>water-balance assistant</b>. Run an area, then ask me anything about it.</div>
+<div class="chatwin" id="chatwin">
+  <div class="cwhead">
+    <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><defs>
+      <clipPath id="cw"><path d="M60 8C60 8 96 50 96 78A36 36 0 1 1 24 78C24 50 60 8 60 8Z"/></clipPath></defs>
+      <path d="M60 8C60 8 96 50 96 78A36 36 0 1 1 24 78C24 50 60 8 60 8Z" fill="#fff"/>
+      <g clip-path="url(#cw)" stroke="#0E7C86" fill="none" stroke-linecap="round">
+        <path d="M26 66 42 66 52 44 62 70 72 56 96 56" stroke-width="3.6"/></g></svg>
+    <div class="t">Water Budget<small>Supply &amp; Demand · AI</small></div>
+    <button id="cwmin" title="Minimize">_</button>
+    <button id="cwclose" title="Close">✕</button>
+  </div>
+  <div class="cwbody" id="chat"></div>
+  <div class="cwfoot">
+    <input id="q" placeholder="Ask about soil moisture, ET, runoff, recharge…">
+    <button id="send" title="Send">➤</button>
   </div>
 </div>
 
 <script>
-const BACKEND = "https://omkar996312-rainfall-runoff-dss-api.hf.space";
+const BACKEND = "https://omkar996312-Budgeting.hf.space";
 const $=id=>document.getElementById(id);
-let map,base,overlay,outlineLayer,chart,lastResult=null,lastParams=null;
+let map,base,overlay,outlineLayer,chart,lastResult=null,lastParams=null,lastSeries=null,lastArea='area',lastContext=null,chatHistory=[];
+let donutChart=null,demandChart=null,agChart=null,storageChart=null,lakeMarkers=[],budgetOpenedOnce=false;
+const LAKE_COLORS=['#2563EB','#1D9E75','#7F77DD','#EA580C','#EF9F27','#D4537E','#0E7C86','#888780'];
+function destroyChart(c){try{if(c)c.destroy();}catch(e){}}
+function clearLakeMarkers(){lakeMarkers.forEach(m=>{try{map.removeLayer(m);}catch(e){}});lakeMarkers=[];}
+function setBudget(open){const p=$('budgetpanel');p.classList.toggle('closed',!open);
+  $('budgettab').innerHTML=open?'Water budget ›':'Water budget ‹';
+  setTimeout(()=>{try{map.invalidateSize();}catch(e){}},380);}
+function toggleBudget(){setBudget($('budgetpanel').classList.contains('closed'));}
 const reduce=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
-const SEG_COLOR={rainfall:'#2563EB',runoff:'#EA580C',dem:'#15803D'};
+const SEG_COLOR={soil_moisture:'#41ab5d',precipitation:'#2563EB',evapotranspiration:'#238b45',runoff:'#EA580C',deep_percolation:'#6a51a3'};
+const COMP_LABEL={soil_moisture:'Soil moisture',precipitation:'Precipitation',evapotranspiration:'Evapotranspiration',runoff:'Runoff',deep_percolation:'Deep percolation'};
+const COMP_ORDER=['soil_moisture','precipitation','evapotranspiration','runoff','deep_percolation'];
 const BASEMAPS={
   sat:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
   topo:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
@@ -291,6 +527,7 @@ function initMap(){
   L.control.zoom({position:'bottomright'}).addTo(map);
   L.control.scale({position:'bottomright',imperial:false}).addTo(map);
   base=L.tileLayer(BASEMAPS.topo,{attribution:'Tiles © Esri'}).addTo(map);
+  initDraw();
 }
 function setBasemap(b){ if(base)map.removeLayer(base);
   base=L.tileLayer(BASEMAPS[b],{attribution:'Tiles © Esri'}).addTo(map);
@@ -308,40 +545,108 @@ const showErr=m=>{const e=$('err');e.textContent=m;e.style.display='block';};
 const clearErr=()=>$('err').style.display='none';
 const bar=on=>$('topbar').style.display=on?'block':'none';
 const fmtDate=s=>{if(!s)return'';const[y,m,d]=s.split('-');return d+'/'+m+'/'+y;};
-function curParams(){return{state:$('state').value,district:$('district').value,start_date:$('start').value,
-  end_date:$('end').value,data_source:$('source').value,model:$('model').value,scenario:$('scenario').value};}
+let currentMode='admin',customMode='draw',customGeojson=null,drawnItems=null,drawControl=null;
+function buildBody(){const b={start_date:$('start').value,end_date:$('end').value,mode:currentMode};
+  if(currentMode==='admin'){b.state=$('state').value;b.district=$('district').value||null;}
+  else if(currentMode==='watershed'){b.basin=$('basin').value;b.sub_basin=$('subbasin').value||null;b.watershed=$('watershed').value||null;}
+  else if(currentMode==='custom'){b.geojson=customGeojson;b.name='Custom area';}
+  return b;}
+function curParams(){return buildBody();}
+function readyToRun(){if(currentMode==='admin')return !!$('state').value;
+  if(currentMode==='watershed')return !!$('basin').value;
+  if(currentMode==='custom')return !!customGeojson;return false;}
 function countUp(el,t){if(reduce){el.textContent=t.toFixed(1);return;}
   const t0=performance.now();(function s(n){const k=Math.min(1,(n-t0)/850);const e=1-Math.pow(1-k,3);
     el.textContent=(t*e).toFixed(1);if(k<1)requestAnimationFrame(s);})(t0);}
 
 async function loadStates(){try{const d=await api('/api/states');
   $('state').innerHTML='<option value="">Select a state</option>'+d.states.map(n=>`<option>${n}</option>`).join('');
-  $('state').disabled=false;}catch(e){showErr('Could not reach the backend — it may be waking from sleep. Try again shortly.');}}
-async function loadCmip6(){try{const d=await api('/api/cmip6');
-  $('model').innerHTML='<option value="">Select model</option>'+d.models.map(n=>`<option>${n}</option>`).join('');
-  $('scenario').innerHTML='<option value="">Select scenario</option>'+d.scenarios.map(n=>`<option>${n}</option>`).join('');
-  $('model').disabled=false;$('scenario').disabled=false;}catch(e){}}
+  $('state').disabled=false;}catch(e){showErr('Could not reach the backend, it may be waking from sleep. Try again shortly.');}}
 
-async function zoomTo(st,di){try{const q='/api/bounds?state='+encodeURIComponent(st)+(di?'&district='+encodeURIComponent(di):'');
-  const d=await api(q);if(outlineLayer){map.removeLayer(outlineLayer);outlineLayer=null;}
-  if(di&&d.outline)outlineLayer=L.geoJSON(d.outline,{style:{color:'#22B8C4',weight:2.5,fill:false}}).addTo(map);
-  map.flyToBounds(d.bbox,{duration:reduce?0:1.0,padding:[40,40]});}catch(e){}}
+function drawOutline(gj){if(outlineLayer){map.removeLayer(outlineLayer);outlineLayer=null;}
+  if(gj){try{outlineLayer=L.geoJSON(gj,{style:{color:'#22B8C4',weight:2.5,fill:false}}).addTo(map);}catch(e){}}}
+async function previewArea(){
+  if(currentMode==='custom')return;
+  if(!readyToRun())return;
+  try{const d=await api('/api/bounds',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(buildBody())});
+    drawOutline(d.outline);if(d.bbox)map.flyToBounds(d.bbox,{duration:reduce?0:1.0,padding:[40,40]});}catch(e){}}
 
+// drawing tools (custom mode)
+function initDraw(){drawnItems=new L.FeatureGroup().addTo(map);
+  drawControl=new L.Control.Draw({position:'topleft',
+    draw:{polygon:{showArea:true},rectangle:{},polyline:false,circle:false,marker:false,circlemarker:false},
+    edit:{featureGroup:drawnItems}});
+  map.on(L.Draw.Event.CREATED,e=>{drawnItems.clearLayers();drawnItems.addLayer(e.layer);
+    customGeojson=e.layer.toGeoJSON().geometry;
+    map.fitBounds(e.layer.getBounds(),{padding:[40,40]});
+    $('status').textContent='Polygon ready, click Run.';});}
+function showDraw(on){if(!drawControl)return;if(on)map.addControl(drawControl);else map.removeControl(drawControl);}
+function setCustomGeojson(gj,label){customGeojson=gj;drawOutline(gj);
+  try{map.fitBounds(outlineLayer.getBounds(),{padding:[40,40]});}catch(e){}
+  $('custstatus').textContent=(label||'Area loaded')+', ready to run.';$('status').textContent='Custom area ready, click Run.';}
+
+// mode switch
+$('modeseg').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+  $('modeseg').querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  currentMode=b.dataset.m;
+  $('pane-admin').style.display=currentMode==='admin'?'block':'none';
+  $('pane-watershed').style.display=currentMode==='watershed'?'block':'none';
+  $('pane-custom').style.display=currentMode==='custom'?'block':'none';
+  if(outlineLayer){map.removeLayer(outlineLayer);outlineLayer=null;}
+  showDraw(currentMode==='custom'&&customMode==='draw');
+  if(currentMode==='watershed'&&$('basin').disabled)loadBasins();
+  $('status').textContent='Define a study area, then Run.';}));
+
+// administrative
 $('state').addEventListener('change',async e=>{const st=e.target.value,dd=$('district');
   if(!st){dd.innerHTML='<option>Select a state first</option>';dd.disabled=true;return;}
-  dd.disabled=true;dd.innerHTML='<option>Loading…</option>';$('status').textContent='Loading districts in '+st+'…';zoomTo(st,null);
+  dd.disabled=true;dd.innerHTML='<option>Loading…</option>';previewArea();
   try{const d=await api('/api/districts?state='+encodeURIComponent(st));
-    dd.innerHTML='<option value="">Select a district</option>'+d.districts.map(n=>`<option>${n}</option>`).join('');
-    dd.disabled=false;$('status').textContent=st+' loaded — choose a district.';}catch(err){showErr(err.message);}});
-$('district').addEventListener('change',e=>{if(e.target.value){zoomTo($('state').value,e.target.value);
-  $('status').textContent=e.target.value+' selected — ready to run.';}});
-$('source').addEventListener('change',e=>{const f=e.target.value==='future';$('futureBox').style.display=f?'block':'none';
-  $('start').value=f?'2040-01-01':'2022-01-01';$('end').value=f?'2049-12-31':'2023-12-31';if(f&&$('model').disabled)loadCmip6();});
+    dd.innerHTML='<option value="">Whole state</option>'+d.districts.map(n=>`<option>${n}</option>`).join('');
+    dd.disabled=false;$('status').textContent=st+' selected. Run, or pick a district.';}catch(err){showErr(err.message);}});
+$('district').addEventListener('change',()=>{previewArea();
+  $('status').textContent=($('district').value||$('state').value)+' selected, ready to run.';});
 
-function moveInd(i,layer){$('segInd').style.transform='translateX('+(i*100)+'%)';$('segInd').style.background=SEG_COLOR[layer];}
-$('seg').querySelectorAll('button').forEach((b,i)=>b.addEventListener('click',()=>{
-  $('seg').querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
-  moveInd(i,b.dataset.l);setLayer(b.dataset.l);}));
+// watershed
+async function loadBasins(){try{const d=await api('/api/basins');
+  $('basin').innerHTML='<option value="">Select a basin</option>'+d.basins.map(n=>`<option>${n}</option>`).join('');
+  $('basin').disabled=false;}catch(e){showErr('Could not load basins. '+e.message);}}
+$('basin').addEventListener('change',async e=>{const ba=e.target.value,sb=$('subbasin');
+  $('watershed').innerHTML='<option>Select a sub-basin first</option>';$('watershed').disabled=true;
+  if(!ba){sb.innerHTML='<option>Select a basin first</option>';sb.disabled=true;return;}
+  previewArea();sb.disabled=true;sb.innerHTML='<option>Loading…</option>';
+  try{const d=await api('/api/subbasins?basin='+encodeURIComponent(ba));
+    sb.innerHTML='<option value="">Whole basin</option>'+d.sub_basins.map(n=>`<option>${n}</option>`).join('');
+    sb.disabled=false;$('status').textContent=ba+' basin selected. Run, or pick a sub-basin.';}catch(e){}});
+$('subbasin').addEventListener('change',async e=>{const sb=e.target.value,ws=$('watershed');
+  if(!sb){ws.innerHTML='<option>Select a sub-basin first</option>';ws.disabled=true;previewArea();return;}
+  previewArea();ws.disabled=true;ws.innerHTML='<option>Loading…</option>';
+  try{const d=await api('/api/watersheds?basin='+encodeURIComponent($('basin').value)+'&sub_basin='+encodeURIComponent(sb));
+    ws.innerHTML='<option value="">Whole sub-basin</option>'+d.watersheds.map(n=>`<option>${n}</option>`).join('');
+    ws.disabled=false;$('status').textContent=sb+' sub-basin selected. Run, or pick a watershed.';}catch(e){}});
+$('watershed').addEventListener('change',()=>{previewArea();});
+
+// custom: draw vs upload
+$('customseg').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+  $('customseg').querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  customMode=b.dataset.c;
+  $('custom-draw').style.display=customMode==='draw'?'block':'none';
+  $('custom-upload').style.display=customMode==='upload'?'block':'none';
+  showDraw(currentMode==='custom'&&customMode==='draw');}));
+$('cleardraw').addEventListener('click',()=>{if(drawnItems)drawnItems.clearLayers();customGeojson=null;
+  if(outlineLayer){map.removeLayer(outlineLayer);outlineLayer=null;}$('status').textContent='Draw a polygon, then Run.';});
+$('fileinput').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;
+  $('custstatus').textContent='Loading '+file.name+'…';
+  try{if(/\.(geojson|json)$/i.test(file.name)){const txt=await file.text();setCustomGeojson(JSON.parse(txt),file.name);}
+    else if(/\.zip$/i.test(file.name)){const fd=new FormData();fd.append('file',file);
+      const r=await fetch(BACKEND+'/api/shapefile',{method:'POST',body:fd});const d=await r.json();
+      if(!r.ok)throw new Error(d.error||'parse failed');setCustomGeojson(d.geojson,file.name);}
+    else throw new Error('Use a .zip shapefile or .geojson file.');
+  }catch(err){$('custstatus').textContent='Failed: '+err.message;}});
+
+$('layerseg').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+  $('layerseg').querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  setLayer(b.dataset.l);}));
 $('opacity').addEventListener('input',e=>{if(overlay)overlay.setOpacity(e.target.value/100);});
 
 function setLayer(which){if(!lastResult)return;const target=$('opacity').value/100;
@@ -349,37 +654,45 @@ function setLayer(which){if(!lastResult)return;const target=$('opacity').value/1
   const old=overlay;overlay=nl;
   if(!reduce)requestAnimationFrame(()=>setTimeout(()=>nl.setOpacity(target),20));
   if(old){if(!reduce)old.setOpacity(0);setTimeout(()=>map.removeLayer(old),reduce?0:600);}
-  if(which==='dem')drawLegend(lastResult.legend.dem,'Elevation');
-  else drawLegend(lastResult.legend[which],which==='rainfall'?'Rainfall':'Runoff');}
+  drawLegend(lastResult.legend[which],COMP_LABEL[which]);
+  const b=(outlineLayer&&outlineLayer.getBounds&&outlineLayer.getBounds().isValid())?outlineLayer.getBounds():lastResult.bbox;
+  if(b)map.flyToBounds(b,{duration:reduce?0:.6,padding:[40,40]});}
 
-$('reset').addEventListener('click',()=>{$('state').value='';$('district').innerHTML='<option>Select a state first</option>';
-  $('district').disabled=true;$('source').value='historical';$('futureBox').style.display='none';
-  $('start').value='2022-01-01';$('end').value='2023-12-31';clearErr();
+$('reset').addEventListener('click',()=>{$('state').value='';$('district').innerHTML='<option>Select a state first</option>';$('district').disabled=true;
+  $('subbasin').innerHTML='<option>Select a basin first</option>';$('subbasin').disabled=true;
+  $('watershed').innerHTML='<option>Select a sub-basin first</option>';$('watershed').disabled=true;if($('basin').value)$('basin').value='';
+  customGeojson=null;if(drawnItems)drawnItems.clearLayers();$('custstatus').textContent='';
+  $('start').value='2023-07-01';$('end').value='2023-07-31';clearErr();
   ['resultBlock','layerBlock','chartBlock'].forEach(id=>$(id).style.display='none');
   $('titleplate').style.display='none';$('maplegend').style.display='none';
   if(overlay)map.removeLayer(overlay);if(outlineLayer)map.removeLayer(outlineLayer);
-  lastResult=null;map.flyTo([22.2,79.0],5);$('status').textContent='Choose a state and district to begin.';});
+  lastResult=null;map.flyTo([22.2,79.0],5);$('status').textContent='Define a study area, then Run.';
+  clearLakeMarkers();$('bpcontent').style.display='none';$('bpempty').style.display='block';
+  $('budgetCharts').style.display='none';$('storageChartWrap').style.display='none';$('storageResult').innerHTML='';
+  destroyChart(donutChart);destroyChart(demandChart);destroyChart(agChart);destroyChart(storageChart);
+  budgetOpenedOnce=false;setBudget(false);});
 
 $('run').addEventListener('click',async()=>{clearErr();const p=curParams();
-  if(!p.state||!p.district)return showErr('Select both a state and a district.');
-  if(p.data_source==='future'&&(!p.model||!p.scenario))return showErr('Choose a climate model and scenario for future projections.');
-  lastParams=p;bar(true);$('run').disabled=true;$('status').textContent='Computing layers and totals…';
-  try{const d=await api('/api/runoff',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});
-    renderLayers(d,p);$('status').textContent='Layers ready — computing daily series…';loadSeries(p);
+  if(!readyToRun())return showErr('Select or define a study area first.');
+  lastParams=p;bar(true);$('run').disabled=true;$('status').textContent='Computing the water balance, this can take a little while.';
+  try{const d=await api('/api/layers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});
+    renderLayers(d,p);$('status').textContent='Layers ready, computing daily series…';loadSeries(p);loadContext(p);
   }catch(e){showErr(e.message);$('status').textContent='Run failed. Adjust the inputs and try again.';}
   finally{bar(false);$('run').disabled=false;}});
 
 function renderLayers(d,p){lastResult=d;
-  $('seg').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
-  $('seg').querySelector('[data-l=runoff]').classList.add('on');moveInd(1,'runoff');
+  $('layerseg').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+  $('layerseg').querySelector('[data-l=soil_moisture]').classList.add('on');
   if(overlay)map.removeLayer(overlay);
-  overlay=L.tileLayer(d.tiles.runoff,{opacity:$('opacity').value/100,className:'tilefade'}).addTo(map);
+  overlay=L.tileLayer(d.tiles.soil_moisture,{opacity:$('opacity').value/100,className:'tilefade'}).addTo(map);
   if(d.bbox)map.flyToBounds(d.bbox,{duration:reduce?0:.8,padding:[40,40]});
   $('resultBlock').style.display='block';$('layerBlock').style.display='block';
-  countUp($('vRain'),d.summary.total_rainfall_mm);countUp($('vRun'),d.summary.total_runoff_mm);
-  drawLegend(d.legend.runoff,'Runoff');
-  $('tpArea').textContent=d.area;$('tpPeriod').textContent=fmtDate(p.start_date)+' → '+fmtDate(p.end_date);
-  $('titleplate').style.display='block';}
+  $('wbcards').innerHTML=COMP_ORDER.map(c=>`<div class="wbcard" style="--cc:${SEG_COLOR[c]}"><div class="wk">${COMP_LABEL[c]}</div><div class="wv">${(d.summary[c]??0).toFixed(2)}<span class="wu">mm</span></div></div>`).join('');
+  drawLegend(d.legend.soil_moisture,COMP_LABEL.soil_moisture);
+  $('tpArea').textContent=d.area;$('tpPeriod').textContent=fmtDate(p.start_date)+' to '+fmtDate(p.end_date);
+  $('titleplate').style.display='block';
+  $('bpempty').style.display='none';$('bpcontent').style.display='block';
+  if(!budgetOpenedOnce){budgetOpenedOnce=true;setBudget(true);}}
 
 function drawLegend(lg,title){const pal=lg.palette,step=(lg.max-lg.min)/pal.length,u=lg.unit||'';
   const rows=pal.map((c,i)=>{const a=lg.min+i*step,b=lg.min+(i+1)*step;
@@ -390,36 +703,173 @@ function drawLegend(lg,title){const pal=lg.palette,step=(lg.max-lg.min)/pal.leng
 async function loadSeries(p){$('chartBlock').style.display='block';$('chartload').style.display='flex';
   try{const d=await api('/api/timeseries',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});
     $('daysnote').textContent=d.n_days+' days · daily resolution · '+d.scale_m+' m sampling';
+    lastSeries=d.series;lastArea=lastResult?lastResult.area:'area';
     const labels=d.series.map(x=>x.date);if(chart)chart.destroy();
     const ctx=$('chart').getContext('2d');
-    const gR=ctx.createLinearGradient(0,0,0,250);gR.addColorStop(0,'rgba(37,99,235,.28)');gR.addColorStop(1,'rgba(37,99,235,0)');
-    const gQ=ctx.createLinearGradient(0,0,0,250);gQ.addColorStop(0,'rgba(234,88,12,.30)');gQ.addColorStop(1,'rgba(234,88,12,0)');
-    chart=new Chart(ctx,{type:'line',data:{labels,datasets:[
-        {label:'Rainfall',data:d.series.map(x=>x.rainfall),borderColor:'#2563EB',backgroundColor:gR,
-         borderWidth:1.8,pointRadius:0,pointHoverRadius:4,pointHoverBackgroundColor:'#2563EB',tension:.35,fill:true},
-        {label:'Runoff',data:d.series.map(x=>x.runoff),borderColor:'#EA580C',backgroundColor:gQ,
-         borderWidth:1.8,pointRadius:0,pointHoverRadius:4,pointHoverBackgroundColor:'#EA580C',tension:.35,fill:true}]},
+    const ds=COMP_ORDER.map(c=>({label:COMP_LABEL[c],data:d.series.map(x=>x[c]),
+      borderColor:SEG_COLOR[c],backgroundColor:SEG_COLOR[c],borderWidth:2,pointRadius:0,pointHoverRadius:3,tension:.3,fill:false}));
+    chart=new Chart(ctx,{type:'line',data:{labels,datasets:ds},
       options:{responsive:true,maintainAspectRatio:false,animation:{duration:reduce?0:700},
         interaction:{mode:'index',intersect:false},
         plugins:{legend:{position:'top',align:'end',labels:{usePointStyle:true,pointStyle:'circle',boxWidth:8,
-            font:{family:'Inter',size:11.5,weight:'600'},color:'#0C2536',padding:14}},
+            font:{family:'Inter',size:10.5,weight:'600'},color:'#0C2536',padding:10}},
           tooltip:{backgroundColor:'rgba(12,37,54,.94)',titleFont:{family:'Space Mono',size:11},
-            bodyFont:{family:'Inter',size:12},padding:11,cornerRadius:9,displayColors:true,
-            callbacks:{label:c=>' '+c.dataset.label+': '+(c.parsed.y??0).toFixed(1)+' mm'}}},
+            bodyFont:{family:'Inter',size:12},padding:11,cornerRadius:9,
+            callbacks:{label:c=>' '+c.dataset.label+': '+(c.parsed.y??0).toFixed(2)+' mm'}}},
         scales:{x:{ticks:{maxTicksLimit:6,font:{family:'Space Mono',size:9},color:'#5B7383',maxRotation:0},
             grid:{display:false},border:{color:'#DCE6EB'}},
-          y:{beginAtZero:true,title:{display:true,text:'Depth (mm)',font:{family:'Space Mono',size:10},color:'#5B7383'},
+          y:{beginAtZero:true,title:{display:true,text:'mm / day',font:{family:'Space Mono',size:10},color:'#5B7383'},
             ticks:{font:{family:'Space Mono',size:9},color:'#5B7383'},grid:{color:'#EDF2F4'},border:{display:false}}}}});
-    $('chartload').style.display='none';$('status').textContent='Done — '+d.n_days+' daily values loaded.';
+    $('chartload').style.display='none';$('status').textContent='Done, '+d.n_days+' daily values loaded.';
   }catch(e){$('chartload').innerHTML='Series failed: '+e.message;}}
 
 $('download').addEventListener('click',async()=>{if(!lastParams)return;const btn=$('download');const t=btn.textContent;
   btn.textContent='Preparing GeoTIFF…';btn.disabled=true;
   try{const d=await api('/api/download',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({...lastParams,band:'runoff',scale:500})});window.open(d.url,'_blank');
-  }catch(e){showErr('Export failed — large districts can exceed the direct-download limit. '+e.message);}
+    body:JSON.stringify({...lastParams,component:$('dlcomp').value})});window.open(d.url,'_blank');
+  }catch(e){showErr('Export failed, large areas can exceed the direct-download limit. '+e.message);}
   finally{btn.textContent=t;btn.disabled=false;}});
 
+async function loadContext(p){
+  try{const d=await api('/api/context',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});
+    lastContext=d;
+    $('aiBlock').style.display='block';$('chat').innerHTML='';chatHistory=[];
+    addMsg('a','Ask me anything about this area: soil moisture, ET versus rainfall, runoff, recharge, or what water-management measures would help.');
+  }catch(e){}}
+function cleanMd(t){return (t||'').replace(/\*\*(.*?)\*\*/g,'$1').replace(/(^|\n)\s*[\*\-]\s+/g,'$1• ').replace(/\*/g,'').replace(/`/g,'').replace(/^#+\s*/gm,'');}
+function addMsg(role,text){const d=document.createElement('div');d.className='msg '+role;d.textContent=(role==='a')?cleanMd(text):text;
+  $('chat').appendChild(d);$('chat').scrollTop=$('chat').scrollHeight;return d;}
+function summarizeMonthly(series){if(!series)return[];const m={};
+  series.forEach(p=>{const k=(p.date||'').slice(0,7);if(!k)return;
+    if(!m[k]){m[k]={month:k};COMP_ORDER.forEach(c=>m[k][c]=0);}
+    COMP_ORDER.forEach(c=>m[k][c]+=p[c]||0);});
+  return Object.values(m).map(x=>{const o={month:x.month};COMP_ORDER.forEach(c=>o[c+'_mm']=+(x[c]).toFixed(1));return o;});}
+function buildContext(){const c=Object.assign({},lastContext||{});
+  if(lastSeries&&lastSeries.length)c.monthly_totals_mm=summarizeMonthly(lastSeries);
+  return c;}
+async function askAI(text){if(!text)return;
+  if(!lastContext){addMsg('a','Run an analysis first so I have data to work with.');return;}
+  addMsg('u',text);chatHistory.push({role:'user',content:text});
+  const tip=addMsg('t','Thinking…');
+  try{const d=await api('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({question:text,context:buildContext(),history:chatHistory})});
+    tip.remove();addMsg('a',d.answer);chatHistory.push({role:'assistant',content:d.answer});
+  }catch(e){tip.remove();addMsg('a','Sorry, '+e.message);}}
+$('send').addEventListener('click',()=>{const v=$('q').value.trim();if(v){$('q').value='';askAI(v);}});
+$('q').addEventListener('keydown',e=>{if(e.key==='Enter'){const v=$('q').value.trim();if(v){$('q').value='';askAI(v);}}});
+function openChat(){$('chatwin').classList.add('open');$('greet').style.display='none';$('fab').style.display='none';$('q').focus();}
+function closeChat(){$('chatwin').classList.remove('open');$('fab').style.display='flex';}
+$('fab').addEventListener('click',openChat);
+$('cwmin').addEventListener('click',closeChat);
+$('cwclose').addEventListener('click',closeChat);
+$('greetx').addEventListener('click',()=>$('greet').style.display='none');
+setTimeout(()=>{if(!$('chatwin').classList.contains('open'))$('greet').style.display='block';},1200);
+$('measures').addEventListener('click',()=>{openChat();askAI('Suggest soil and water conservation measures suited to this area.');});
+
+$('csv').addEventListener('click',()=>{if(!lastSeries||!lastSeries.length)return;
+  const rows=[['date','rainfall_mm','runoff_mm'],...lastSeries.map(p=>[p.date,p.rainfall??'',p.runoff??''])];
+  const csv=rows.map(r=>r.join(',')).join('\n');const blob=new Blob([csv],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');
+  a.href=url;a.download=(lastArea||'daily').replace(/[^\w]+/g,'_')+'_daily.csv';a.click();URL.revokeObjectURL(url);});
+
+function buildDemand(){const n=id=>+($(id).value||0);
+  return {domestic:[{count:n('dom_urban_c'),rate:n('dom_urban_r')},{count:n('dom_rural_c'),rate:n('dom_rural_r')}],
+    livestock:[{count:n('liv_cattle_c'),rate:n('liv_cattle_r')},{count:n('liv_buffalo_c'),rate:n('liv_buffalo_r')},
+      {count:n('liv_sg_c'),rate:n('liv_sg_r')},{count:n('liv_poultry_c'),rate:n('liv_poultry_r')}],
+    industrial:[{count:n('ind_small_c'),rate:n('ind_small_r')},{count:n('ind_large_c'),rate:n('ind_large_r')}]};}
+$('calcbudget').addEventListener('click',async()=>{if(!lastParams){showErr('Run an analysis first.');return;}
+  const btn=$('calcbudget'),t=btn.textContent;btn.textContent='Calculating…';btn.disabled=true;
+  try{const d=await api('/api/budget',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({...lastParams,demand:buildDemand()})});
+    renderBudget(d);
+  }catch(e){$('budgetResult').innerHTML='<div class="stoline">Budget failed: '+e.message+'</div>';}
+  finally{btn.textContent=t;btn.disabled=false;}});
+
+function renderBudget(d){const s=d.supply,dm=d.demand;
+  $('budgetCharts').style.display='block';
+  $('balcardWrap').innerHTML=`<div class="balcard ${d.status}"><div class="bl">${d.status==='surplus'?'Water surplus':'Water deficit'} · ${d.days} days</div><div class="bn">${d.balance_mcm>=0?'+':''}${d.balance_mcm} MCM</div></div>`;
+
+  destroyChart(donutChart);
+  donutChart=new Chart($('budgetDonut').getContext('2d'),{type:'doughnut',
+    data:{labels:['Supply','Demand'],datasets:[{data:[s.total_mcm,dm.total_mcm],backgroundColor:['#0E7C86','#D85A30'],borderWidth:0,hoverOffset:6}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'62%',animation:{duration:reduce?0:700},
+      plugins:{legend:{position:'bottom',labels:{usePointStyle:true,pointStyle:'circle',boxWidth:8,font:{family:'Inter',size:11,weight:'600'},color:'#0C2536',padding:12}},
+        tooltip:{backgroundColor:'rgba(12,37,54,.94)',padding:11,cornerRadius:9,callbacks:{label:c=>' '+c.label+': '+(c.parsed||0).toFixed(2)+' MCM'}}}}});
+
+  destroyChart(demandChart);
+  demandChart=new Chart($('demandBar').getContext('2d'),{type:'bar',
+    data:{labels:['Crop','Domestic','Livestock','Industrial'],
+      datasets:[{data:[dm.crop_mcm,dm.domestic_mcm,dm.livestock_mcm,dm.industrial_mcm],
+        backgroundColor:['#639922','#2563EB','#EF9F27','#888780'],borderRadius:6,maxBarThickness:54}]},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:reduce?0:700},
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(12,37,54,.94)',padding:11,cornerRadius:9,callbacks:{label:c=>' '+(c.parsed.y||0).toFixed(2)+' MCM'}}},
+      scales:{x:{grid:{display:false},border:{color:'#DCE6EB'},ticks:{font:{family:'Inter',size:10,weight:'600'},color:'#5B7383'}},
+        y:{beginAtZero:true,title:{display:true,text:'MCM',font:{family:'Space Mono',size:10},color:'#5B7383'},ticks:{font:{family:'Space Mono',size:9},color:'#5B7383'},grid:{color:'#EDF2F4'},border:{display:false}}}}});
+
+  if(dm.crop_series&&dm.crop_series.length){$('agWrap').style.display='block';
+    destroyChart(agChart);
+    agChart=new Chart($('agChart').getContext('2d'),{type:'line',
+      data:{labels:dm.crop_series.map(p=>p.date),datasets:[{label:'Crop demand',data:dm.crop_series.map(p=>p.cwd_mcm),
+        borderColor:'#639922',backgroundColor:'rgba(99,153,34,.15)',borderWidth:2,pointRadius:0,pointHoverRadius:3,tension:.3,fill:true}]},
+      options:{responsive:true,maintainAspectRatio:false,animation:{duration:reduce?0:700},interaction:{mode:'index',intersect:false},
+        plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(12,37,54,.94)',padding:11,cornerRadius:9,callbacks:{label:c=>' '+(c.parsed.y||0).toFixed(3)+' MCM/day'}}},
+        scales:{x:{ticks:{maxTicksLimit:6,font:{family:'Space Mono',size:9},color:'#5B7383',maxRotation:0},grid:{display:false},border:{color:'#DCE6EB'}},
+          y:{beginAtZero:true,title:{display:true,text:'MCM/day',font:{family:'Space Mono',size:10},color:'#5B7383'},ticks:{font:{family:'Space Mono',size:9},color:'#5B7383'},grid:{color:'#EDF2F4'},border:{display:false}}}}});
+  }else{$('agWrap').style.display='none';}
+
+  $('budgetResult').innerHTML=
+    `<div class="bcard sup"><div class="brow"><span>Surface runoff</span><span class="bv">${s.runoff_mcm} MCM</span></div>`+
+    `<div class="brow"><span>Groundwater recharge</span><span class="bv">${s.recharge_mcm} MCM</span></div>`+
+    `<div class="brow btot"><span>Total supply</span><span class="bv">${s.total_mcm} MCM</span></div></div>`+
+    `<div class="bcard dem"><div class="brow"><span>Crop water deficit</span><span class="bv">${dm.crop_mcm} MCM</span></div>`+
+    `<div class="brow"><span>Domestic</span><span class="bv">${dm.domestic_mcm} MCM</span></div>`+
+    `<div class="brow"><span>Livestock</span><span class="bv">${dm.livestock_mcm} MCM</span></div>`+
+    `<div class="brow"><span>Industrial</span><span class="bv">${dm.industrial_mcm} MCM</span></div>`+
+    `<div class="brow btot"><span>Total demand</span><span class="bv">${dm.total_mcm} MCM</span></div></div>`;
+}
+$('eststorage').addEventListener('click',async()=>{if(!lastParams){showErr('Run an analysis first.');return;}
+  const btn=$('eststorage'),t=btn.textContent;btn.textContent='Estimating… (can be slow)';btn.disabled=true;
+  $('storageResult').innerHTML='<div class="stoline">Running Sentinel-1 estimate…</div>';
+  try{const d=await api('/api/storage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(lastParams)});
+    renderStorage(d);
+  }catch(e){$('storageChartWrap').style.display='none';$('storageResult').innerHTML='<div class="stoline">Storage failed: '+e.message+'</div>';}
+  finally{btn.textContent=t;btn.disabled=false;}});
+
+function renderStorage(d){clearLakeMarkers();
+  const hasLakes=d.lakes&&d.lakes.length;
+  const hasSeries=d.storage_series&&d.storage_series.length;
+  if(!hasLakes&&!hasSeries){$('storageChartWrap').style.display='none';
+    $('storageResult').innerHTML='<div class="stoline">No Sentinel-1 passes or no waterbodies found in this area/period.</div>';return;}
+  $('storageChartWrap').style.display='block';
+  destroyChart(storageChart);
+  let labels,datasets,note=d.note||'',perLake=false;
+  if(hasLakes){perLake=true;
+    const lakes=d.lakes.slice(0,8);
+    labels=(lakes[0].series||[]).map(p=>p.date);
+    datasets=lakes.map((lk,i)=>({label:lk.name||('Lake '+(i+1)),data:(lk.series||[]).map(p=>p.storage_mcm),
+      borderColor:LAKE_COLORS[i%LAKE_COLORS.length],backgroundColor:LAKE_COLORS[i%LAKE_COLORS.length],
+      borderWidth:2,pointRadius:2,pointHoverRadius:4,tension:.3,fill:false}));
+    lakes.forEach((lk,i)=>{if(lk.lat==null||lk.lng==null)return;
+      const col=LAKE_COLORS[i%LAKE_COLORS.length];
+      const last=(lk.series&&lk.series.length)?lk.series[lk.series.length-1].storage_mcm:0;
+      const mk=L.circleMarker([lk.lat,lk.lng],{radius:9,color:'#fff',weight:2,fillColor:col,fillOpacity:.95}).addTo(map);
+      mk.bindTooltip((lk.name||('Lake '+(i+1)))+': '+(last||0).toFixed(2)+' MCM',{direction:'top'});
+      lakeMarkers.push(mk);});
+  }else{
+    labels=d.storage_series.map(p=>p.date);
+    datasets=[{label:'Total storage',data:d.storage_series.map(p=>p.storage_mcm),
+      borderColor:'#2563EB',backgroundColor:'rgba(37,99,235,.15)',borderWidth:2,pointRadius:2,pointHoverRadius:4,tension:.3,fill:true}];
+  }
+  storageChart=new Chart($('storageChart').getContext('2d'),{type:'line',data:{labels,datasets},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:reduce?0:700},interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:perLake,position:'bottom',labels:{usePointStyle:true,pointStyle:'circle',boxWidth:8,font:{family:'Inter',size:10,weight:'600'},color:'#0C2536',padding:10}},
+        tooltip:{backgroundColor:'rgba(12,37,54,.94)',padding:11,cornerRadius:9,callbacks:{label:c=>' '+c.dataset.label+': '+(c.parsed.y||0).toFixed(2)+' MCM'}}},
+      scales:{x:{ticks:{maxTicksLimit:6,font:{family:'Space Mono',size:9},color:'#5B7383',maxRotation:0},grid:{display:false},border:{color:'#DCE6EB'}},
+        y:{beginAtZero:true,title:{display:true,text:'MCM',font:{family:'Space Mono',size:10},color:'#5B7383'},ticks:{font:{family:'Space Mono',size:9},color:'#5B7383'},grid:{color:'#EDF2F4'},border:{display:false}}}}});
+  const head=perLake?(d.lakes.length+' waterbody(ies) · dots on the map are colour-matched'):(d.n_passes+' SAR pass(es)');
+  $('storageResult').innerHTML='<div class="stoline" style="margin-top:8px">'+head+(note?' · '+note:'')+'</div>';
+}
+$('budgettab').addEventListener('click',toggleBudget);
 initMap();loadStates();
 </script>
 </body>
