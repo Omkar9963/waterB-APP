@@ -388,9 +388,12 @@
           <div class="ac">Layers show the period-mean of each component; readouts are the area-wide daily mean.
             For big areas the sampling is coarse, so basin/state values are indicative. Export any component as a GeoTIFF.</div></details>
       </div>
-      <div class="credit">Developed by Omkar<br>
+      <div class="credit">Developed by<br>
+        Dr. Omkar, TNAU<br>
         Dr. S. Selvakumar, TNAU<br>
-        Dr. A. Sarangi, Director, ICAR-IIWM</div>
+        Dr. Ravikumar, TNAU<br>
+        Dr. A. Sarangi, Director, ICAR-IIWM<br>
+        Dr. S. Mohanty, ICAR-IIWM</div>
     </div>
   </aside>
 
@@ -696,7 +699,7 @@ function renderLayers(d,p){lastResult=d;
 
 function drawLegend(lg,title){const pal=lg.palette,step=(lg.max-lg.min)/pal.length,u=lg.unit||'';
   const rows=pal.map((c,i)=>{const a=lg.min+i*step,b=lg.min+(i+1)*step;
-    const t=i===pal.length-1?'≥ '+a.toFixed(0):a.toFixed(0)+' – '+b.toFixed(0);
+    const t=i===pal.length-1?'≥ '+a.toFixed(0):a.toFixed(0)+' to '+b.toFixed(0);
     return `<div class="lrow"><span class="sw" style="background:#${c}"></span>${t} ${u}</div>`;}).join('');
   $('legend').innerHTML=rows;$('mlTitle').textContent=title+(u?' ('+u+')':'');$('mlbody').innerHTML=rows;$('maplegend').style.display='block';}
 
